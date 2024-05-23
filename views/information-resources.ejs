@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/_head') %>
+    <title>Information Resources</title>
+</head>
+<body>
+    <%- include('partials/_header') %>
+    <div class="container mt-5">
+        <h1>Information Resources</h1>
+        <form id="resourceFilterForm" action="/resources" method="GET" class="needs-validation" novalidate>
+            <div class="mb-3">
+                <label for="contentType" class="form-label">Content Type</label>
+                <select class="form-select" id="contentType" name="contentType" required>
+                    <option value="">Select Content Type</option>
+                    <option value="article">Article</option>
+                    <option value="video">Video</option>
+                </select>
+                <div class="invalid-feedback">
+                    Please select a content type.
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="relatedConditions" class="form-label">Related Conditions</label>
+                <input type="text" class="form-control" id="relatedConditions" name="relatedConditions" placeholder="Enter related conditions">
+            </div>
+            <button type="submit" class="btn btn-primary">Filter</button>
+        </form>
+        <div class="mt-5">
+            <h2>Results</h2>
+            <% if (resources && resources.length > 0) { %>
+                <ul class="list-group">
+                    <% resources.forEach(resource => { %>
+                        <li class="list-group-item">
+                            <h3><%= resource.contentType %></h3>
+                            <p><%= resource.content %></p>
+                            <p><strong>Related Conditions:</strong> <%= resource.relatedConditions.join(', ') %></p>
+                        </li>
+                    <% }) %>
+                </ul>
+            <% } else { %>
+                <p>No resources found.</p>
+            <% } %>
+        </div>
+    </div>
+    <%- include('partials/_footer') %>
+    <script>
+        // Bootstrap form validation
+        (function () {
+            'use strict'
+            var forms = document.querySelectorAll('.needs-validation')
+            Array.prototype.slice.call(forms)
+                .forEach(function (form) {
+                    form.addEventListener('submit', function (event) {
+                        if (!form.checkValidity()) {
+                            event.preventDefault()
+                            event.stopPropagation()
+                        }
+                        form.classList.add('was-validated')
+                    }, false)
+                })
+        })()
+    </script>
+</body>
+</html>

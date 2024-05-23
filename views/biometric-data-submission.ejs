@@ -1,0 +1,49 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/_head') %>
+    <title>Biometric Data Submission</title>
+</head>
+<body>
+    <%- include('partials/_header') %>
+    <div class="container mt-5">
+        <h2>Submit Your Biometric Data</h2>
+        <form action="/auth/submit-biometric-data" method="POST" enctype="multipart/form-data" id="biometricDataForm">
+            <div class="mb-3">
+                <label for="faceScanData" class="form-label">Face Scan Data</label>
+                <input type="file" class="form-control" id="faceScanData" name="faceScanData" required>
+                <div class="invalid-feedback">
+                    Please upload your face scan data.
+                </div>
+            </div>
+            <div class="mb-3">
+                <label for="fingerprintData" class="form-label">Fingerprint Data</label>
+                <input type="file" class="form-control" id="fingerprintData" name="fingerprintData" required>
+                <div class="invalid-feedback">
+                    Please upload your fingerprint data.
+                </div>
+            </div>
+            <input type="hidden" name="userID" value="<%= userID %>">
+            <button type="submit" class="btn btn-primary">Submit</button>
+        </form>
+    </div>
+    <%- include('partials/_footer') %>
+    <script>
+        // Bootstrap form validation
+        (function () {
+            'use strict'
+            var forms = document.querySelectorAll('.needs-validation')
+            Array.prototype.slice.call(forms)
+                .forEach(function (form) {
+                    form.addEventListener('submit', function (event) {
+                        if (!form.checkValidity()) {
+                            event.preventDefault()
+                            event.stopPropagation()
+                        }
+                        form.classList.add('was-validated')
+                    }, false)
+                })
+        })()
+    </script>
+</body>
+</html>

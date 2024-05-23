@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <%- include('partials/_head') %>
+    <title>Test Submission</title>
+</head>
+<body>
+    <%- include('partials/_header') %>
+    <div class="container mt-5">
+        <h1>Submit Your Test</h1>
+        <form id="testSubmissionForm" action="/test/submit" method="POST" enctype="multipart/form-data" class="needs-validation" novalidate>
+            <div class="mb-3">
+                <label for="testPhoto" class="form-label">Test Photo</label>
+                <input type="file" class="form-control" id="testPhoto" name="testPhoto" required>
+                <div class="invalid-feedback">
+                    Please upload a test photo.
+                </div>
+            </div>
+            <button type="submit" class="btn btn-primary">Submit Test</button>
+        </form>
+    </div>
+    <%- include('partials/_footer') %>
+    <script>
+        // Client-side form validation
+        (function () {
+            'use strict'
+            var forms = document.querySelectorAll('.needs-validation')
+            Array.prototype.slice.call(forms)
+                .forEach(function (form) {
+                    form.addEventListener('submit', function (event) {
+                        if (!form.checkValidity()) {
+                            event.preventDefault()
+                            event.stopPropagation()
+                        }
+                        form.classList.add('was-validated')
+                    }, false)
+                })
+        })()
+    </script>
+</body>
+</html>

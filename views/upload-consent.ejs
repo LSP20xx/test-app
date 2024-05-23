@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <%- include('partials/_head') %>
+  <title>Upload Parental Consent</title>
+</head>
+<body>
+  <%- include('partials/_header') %>
+  <div class="container">
+    <h1>Upload Parental Consent</h1>
+    <form action="/upload-consent" method="POST" enctype="multipart/form-data">
+      <div class="mb-3">
+        <label for="childID" class="form-label">Child ID</label>
+        <input type="text" class="form-control" id="childID" name="childID" required>
+      </div>
+      <div class="mb-3">
+        <label for="parentUserID" class="form-label">Parent User ID</label>
+        <input type="text" class="form-control" id="parentUserID" name="parentUserID" required>
+      </div>
+      <div class="mb-3">
+        <label for="consentGiven" class="form-label">Consent Given</label>
+        <select class="form-select" id="consentGiven" name="consentGiven" required>
+          <option value="true">Yes</option>
+          <option value="false">No</option>
+        </select>
+      </div>
+      <div class="mb-3">
+        <label for="consentDocument" class="form-label">Consent Document</label>
+        <input class="form-control" type="file" id="consentDocument" name="consentDocument" required>
+      </div>
+      <button type="submit" class="btn btn-primary">Upload</button>
+    </form>
+  </div>
+  <%- include('partials/_footer') %>
+</body>
+</html>

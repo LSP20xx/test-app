@@ -1,0 +1,92 @@
+/* Placeholder for custom styles */
+
+/* General Styles */
+body {
+    font-family: Arial, sans-serif;
+    background-color: #f8f9fa;
+    color: #343a40;
+}
+
+.container {
+    margin-top: 20px;
+}
+
+/* Header Styles */
+header {
+    background-color: #007bff;
+    color: white;
+    padding: 10px 0;
+}
+
+header a {
+    color: white;
+    text-decoration: none;
+    margin: 0 15px;
+}
+
+header a:hover {
+    text-decoration: underline;
+}
+
+/* Form Styles */
+form {
+    background-color: white;
+    padding: 20px;
+    border-radius: 5px;
+    box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+}
+
+form .form-label {
+    font-weight: bold;
+}
+
+form .form-control {
+    margin-bottom: 10px;
+}
+
+form .btn-primary {
+    background-color: #007bff;
+    border-color: #007bff;
+}
+
+form .btn-primary:hover {
+    background-color: #0056b3;
+    border-color: #004085;
+}
+
+/* Footer Styles */
+footer {
+    background-color: #343a40;
+    color: white;
+    padding: 10px 0;
+    text-align: center;
+    position: fixed;
+    width: 100%;
+    bottom: 0;
+}
+
+footer a {
+    color: #ffc107;
+    text-decoration: none;
+}
+
+footer a:hover {
+    text-decoration: underline;
+}
+
+/* Validation Styles */
+.was-validated .form-control:invalid {
+    border-color: #dc3545;
+}
+
+.was-validated .form-control:invalid:focus {
+    box-shadow: 0 0 0 0.2rem rgba(220, 53, 69, 0.25);
+}
+
+.was-validated .form-control:valid {
+    border-color: #28a745;
+}
+
+.was-validated .form-control:valid:focus {
+    box-shadow: 0 0 0 0.2rem rgba(40, 167, 69, 0.25);
+}
