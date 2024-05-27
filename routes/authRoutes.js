@@ -6,7 +6,7 @@ const Identification = require("../models/Identification");
 const upload = require("../utils/multerConfig");
 const { FaceClient } = require("@azure/cognitiveservices-face");
 const { CognitiveServicesCredentials } = require("@azure/ms-rest-azure-js");
-const { isAuthenticated, hasRole } = require("../middleware/authMiddleware");
+const { isAuthenticated } = require("./middleware/authMiddleware");
 const router = express.Router();
 
 // Azure Face API setup
