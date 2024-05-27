@@ -7,6 +7,7 @@ const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
 const testRoutes = require("./routes/testRoutes");
 const resourceRoutes = require("./routes/resourceRoutes");
+const path = require("path");
 
 if (!process.env.DATABASE_URL || !process.env.SESSION_SECRET) {
   console.error(
@@ -28,9 +29,17 @@ app.set("view engine", "ejs");
 // Serve static files
 app.use(express.static("public"));
 
-// Database connection
+const dbUrl = process.env.DATABASE_URL.replace("[::1]", "localhost");
+
+const tlsOptions = {
+  tls: true,
+  tlsAllowInvalidCertificates: true,
+  tlsAllowInvalidHostnames: true,
+};
+
+// Conectar a MongoDB usando Mongoose
 mongoose
-  .connect(process.env.DATABASE_URL)
+  .connect(dbUrl, { ...tlsOptions })
   .then(() => {
     console.log("Database connected successfully");
   })
@@ -46,7 +55,7 @@ app.use(
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({ mongoUrl: process.env.DATABASE_URL }),
+    store: MongoStore.create({ mongoUrl: dbUrl, ...tlsOptions }),
   })
 );
 
@@ -58,7 +67,6 @@ app.on("error", (error) => {
 // Logging session creation and destruction
 app.use((req, res, next) => {
   const sess = req.session;
-  // Make session available to all views
   res.locals.session = sess;
   if (!sess.views) {
     sess.views = 1;

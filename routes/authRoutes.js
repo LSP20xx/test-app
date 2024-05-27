@@ -1,19 +1,19 @@
 const express = require("express");
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
-const BiometricData = require("../models/BiometricData");
+// const BiometricData = require("../models/BiometricData");
 const Identification = require("../models/Identification");
 const upload = require("../utils/multerConfig");
-const { FaceClient } = require("@azure/cognitiveservices-face");
-const { CognitiveServicesCredentials } = require("@azure/ms-rest-azure-js");
+// const { FaceClient } = require("@azure/cognitiveservices-face");
+// const { CognitiveServicesCredentials } = require("@azure/ms-rest-azure-js");
 const { isAuthenticated } = require("./middleware/authMiddleware");
 const router = express.Router();
 
 // Azure Face API setup
-const faceKey = process.env.AZURE_FACE_API_KEY;
-const faceEndpoint = process.env.AZURE_FACE_API_ENDPOINT;
-const faceCredentials = new CognitiveServicesCredentials(faceKey);
-const faceClient = new FaceClient(faceCredentials, faceEndpoint);
+// const faceKey = process.env.AZURE_FACE_API_KEY;
+// const faceEndpoint = process.env.AZURE_FACE_API_ENDPOINT;
+// const faceCredentials = new CognitiveServicesCredentials(faceKey);
+// const faceClient = new FaceClient(faceCredentials, faceEndpoint);
 
 router.get("/auth/register", (req, res) => {
   res.render("register");
@@ -21,28 +21,13 @@ router.get("/auth/register", (req, res) => {
 
 router.post("/auth/register", async (req, res) => {
   try {
-    const {
-      username,
-      password,
-      firstName,
-      lastName,
-      email,
-      dateOfBirth,
-      gender,
-      accountNumber,
-    } = req.body;
-    const accountStatus = "ACTIVE"; // Default status when registering
+    const { email, password } = req.body;
+    const accountStatus = "PENDING"; // Default status when registering
     // Hashing the password before creating the user
     const passwordHash = await bcrypt.hash(password, 10);
     const user = await User.create({
-      username,
-      passwordHash,
-      firstName,
-      lastName,
       email,
-      dateOfBirth,
-      gender,
-      accountNumber,
+      passwordHash,
       accountStatus,
     });
 
@@ -97,43 +82,43 @@ router.get("/auth/logout", (req, res) => {
   });
 });
 
-router.post("/auth/biometrics", isAuthenticated, async (req, res) => {
-  try {
-    const { userId, faceScanData, fingerprintData } = req.body;
+// router.post("/auth/biometrics", isAuthenticated, async (req, res) => {
+//   try {
+//     const { userId, faceScanData, fingerprintData } = req.body;
 
-    // Analyze face scan using Azure Face API
-    const faceScanBuffer = Buffer.from(faceScanData, "base64");
-    const detectedFaces = await faceClient.face.detectWithStream(
-      faceScanBuffer,
-      {
-        returnFaceId: true,
-        detectionModel: "detection_03",
-      }
-    );
+//     // Analyze face scan using Azure Face API
+//     const faceScanBuffer = Buffer.from(faceScanData, "base64");
+//     const detectedFaces = await faceClient.face.detectWithStream(
+//       faceScanBuffer,
+//       {
+//         returnFaceId: true,
+//         detectionModel: "detection_03",
+//       }
+//     );
 
-    if (detectedFaces.length === 0) {
-      console.log("No faces detected.");
-      return res
-        .status(400)
-        .send("No faces detected in the provided face scan.");
-    }
+//     if (detectedFaces.length === 0) {
+//       console.log("No faces detected.");
+//       return res
+//         .status(400)
+//         .send("No faces detected in the provided face scan.");
+//     }
 
-    const biometricData = new BiometricData({
-      userID: userId,
-      faceScanData: faceScanBuffer,
-      fingerprintData: Buffer.from(fingerprintData, "base64"),
-    });
+//     const biometricData = new BiometricData({
+//       userID: userId,
+//       faceScanData: faceScanBuffer,
+//       fingerprintData: Buffer.from(fingerprintData, "base64"),
+//     });
 
-    await biometricData.save();
-    console.log("Biometric data received and saved:", biometricData);
+//     await biometricData.save();
+//     console.log("Biometric data received and saved:", biometricData);
 
-    res.send("Biometric data submission is successful.");
-  } catch (error) {
-    console.error("Biometric data submission error:", error.message);
-    console.error(error.stack);
-    res.status(500).send(error.message);
-  }
-});
+//     res.send("Biometric data submission is successful.");
+//   } catch (error) {
+//     console.error("Biometric data submission error:", error.message);
+//     console.error(error.stack);
+//     res.status(500).send(error.message);
+//   }
+// });
 
 // Route to render the form for uploading identification documents
 router.get("/auth/upload-id", isAuthenticated, (req, res) => {

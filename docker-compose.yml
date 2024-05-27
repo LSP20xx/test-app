@@ -11,6 +11,10 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
+      - ./certs/mongod.conf:/etc/mongod.conf
+      - ./certs/mongodb.pem:/etc/ssl/mongodb.pem
+      - ./certs/ca-cert.pem:/etc/ssl/ca-cert.pem
+    command: ["mongod", "--config", "/etc/mongod.conf"]
 
   node_app:
     build:
@@ -20,13 +24,12 @@ services:
     ports:
       - "6000:6000"
     environment:
-      PORT: ${PORT}
-      DATABASE_URL: mongodb://root:example@mongodb:27017/healing_blends_db?authSource=admin
-      SESSION_SECRET: ${SESSION_SECRET}
-      # AZURE_COMPUTER_VISION_KEY: ${AZURE_COMPUTER_VISION_KEY}
-      # AZURE_COMPUTER_VISION_ENDPOINT: ${AZURE_COMPUTER_VISION_ENDPOINT}
-      # AZURE_FACE_API_KEY: ${AZURE_FACE_API_KEY}
-      # AZURE_FACE_API_ENDPOINT: ${AZURE_FACE_API_ENDPOINT}
+      PORT: 6000
+      DATABASE_URL: mongodb://root:example@mongodb:27017/healing_blends_db?authSource=admin&tls=true
+      SESSION_SECRET: some_secret
+    volumes:
+      - ./certs/mongodb.pem:/etc/ssl/mongodb.pem
+      - ./certs/ca-cert.pem:/etc/ssl/ca-cert.pem
     depends_on:
       - mongodb
 
