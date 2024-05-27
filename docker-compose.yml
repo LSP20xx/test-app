@@ -1,0 +1,34 @@
+version: "3.8"
+services:
+  mongodb:
+    image: mongo:4.4
+    container_name: healing_blends_mongo
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: root
+      MONGO_INITDB_ROOT_PASSWORD: example
+      MONGO_INITDB_DATABASE: healing_blends_db
+    ports:
+      - "27017:27017"
+    volumes:
+      - mongo_data:/data/db
+
+  node_app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: healing_blends_node
+    ports:
+      - "6000:6000"
+    environment:
+      PORT: ${PORT}
+      DATABASE_URL: mongodb://root:example@mongodb:27017/healing_blends_db?authSource=admin
+      SESSION_SECRET: ${SESSION_SECRET}
+      # AZURE_COMPUTER_VISION_KEY: ${AZURE_COMPUTER_VISION_KEY}
+      # AZURE_COMPUTER_VISION_ENDPOINT: ${AZURE_COMPUTER_VISION_ENDPOINT}
+      # AZURE_FACE_API_KEY: ${AZURE_FACE_API_KEY}
+      # AZURE_FACE_API_ENDPOINT: ${AZURE_FACE_API_ENDPOINT}
+    depends_on:
+      - mongodb
+
+volumes:
+  mongo_data:
