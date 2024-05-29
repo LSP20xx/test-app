@@ -9,12 +9,12 @@ const userSchema = new mongoose.Schema({
   lastName: { type: String, required: false },
   email: {
     type: String,
-    required: true,
+    required: false,
     unique: true,
     validate: [isEmail, "Please enter a valid email"],
   },
-  passwordHash: { type: String, required: true },
-  accountNumber: { type: Number, required: true, unique: true },
+  passwordHash: { type: String, required: false },
+  accountNumber: { type: Number, required: false, unique: true },
   dateOfBirth: { type: Date, required: false },
   gender: {
     type: String,

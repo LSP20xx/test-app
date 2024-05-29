@@ -31,15 +31,9 @@ app.use(express.static("public"));
 
 const dbUrl = process.env.DATABASE_URL.replace("[::1]", "localhost");
 
-const tlsOptions = {
-  tls: true,
-  tlsAllowInvalidCertificates: true,
-  tlsAllowInvalidHostnames: true,
-};
-
 // Conectar a MongoDB usando Mongoose
 mongoose
-  .connect(dbUrl, { ...tlsOptions })
+  .connect(dbUrl)
   .then(() => {
     console.log("Database connected successfully");
   })
@@ -55,7 +49,7 @@ app.use(
     secret: process.env.SESSION_SECRET,
     resave: false,
     saveUninitialized: false,
-    store: MongoStore.create({ mongoUrl: dbUrl, ...tlsOptions }),
+    store: MongoStore.create({ mongoUrl: dbUrl }),
   })
 );
 

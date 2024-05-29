@@ -1,3 +1,5 @@
+const Sequence = require("../models/Sequence");
+
 const getNextSequenceValue = async (modelName) => {
   const sequenceDocument = await Sequence.findOneAndUpdate(
     { modelName },

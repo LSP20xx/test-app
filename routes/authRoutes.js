@@ -21,13 +21,13 @@ router.get("/auth/register", (req, res) => {
 
 router.post("/auth/register", async (req, res) => {
   try {
-    const { email, password } = req.body;
+    // const { email, password } = req.body;
     const accountStatus = "PENDING"; // Default status when registering
     // Hashing the password before creating the user
-    const passwordHash = await bcrypt.hash(password, 10);
+    // const passwordHash = await bcrypt.hash(password, 10);
     const user = await User.create({
-      email,
-      passwordHash,
+      // email,
+      // passwordHash,
       accountStatus,
     });
 
@@ -48,8 +48,8 @@ router.get("/auth/login", (req, res) => {
 
 router.post("/auth/login", async (req, res) => {
   try {
-    const { username, password } = req.body;
-    const user = await User.findOne({ username });
+    const { email, password } = req.body;
+    const user = await User.findOne({ email });
     if (!user) {
       console.log("Login attempt failed: User not found");
       return res.status(400).send("User not found");

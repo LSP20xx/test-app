@@ -11,10 +11,11 @@ services:
       - "27017:27017"
     volumes:
       - mongo_data:/data/db
-      - ./certs/mongod.conf:/etc/mongod.conf
-      - ./certs/mongodb.pem:/etc/ssl/mongodb.pem
-      - ./certs/ca-cert.pem:/etc/ssl/ca-cert.pem
-    command: ["mongod", "--config", "/etc/mongod.conf"]
+      # Eliminar las líneas de volúmenes de certificados
+      # - ./certs/mongod.conf:/etc/mongod.conf
+      # - ./certs/mongodb.pem:/etc/ssl/mongodb.pem
+      # - ./certs/ca-cert.pem:/etc/ssl/ca-cert.pem
+    command: ["mongod"]
 
   node_app:
     build:
@@ -25,11 +26,12 @@ services:
       - "6000:6000"
     environment:
       PORT: 6000
-      DATABASE_URL: mongodb://root:example@mongodb:27017/healing_blends_db?authSource=admin&tls=true
+      DATABASE_URL: mongodb://root:example@mongodb:27017/healing_blends_db?authSource=admin
       SESSION_SECRET: some_secret
-    volumes:
-      - ./certs/mongodb.pem:/etc/ssl/mongodb.pem
-      - ./certs/ca-cert.pem:/etc/ssl/ca-cert.pem
+    # Eliminar las líneas de volúmenes de certificados
+    # volumes:
+    #   - ./certs/mongodb.pem:/etc/ssl/mongodb.pem
+    #   - ./certs/ca-cert.pem:/etc/ssl/ca-cert.pem
     depends_on:
       - mongodb
 
