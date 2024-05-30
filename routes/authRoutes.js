@@ -1,12 +1,15 @@
 const express = require("express");
 const User = require("../models/User");
 const bcrypt = require("bcrypt");
-// const BiometricData = require("../models/BiometricData");
+const BiometricData = require("../models/BiometricData");
 const Identification = require("../models/Identification");
 const upload = require("../utils/multerConfig");
-// const { FaceClient } = require("@azure/cognitiveservices-face");
-// const { CognitiveServicesCredentials } = require("@azure/ms-rest-azure-js");
+const { FaceClient } = require("@azure/cognitiveservices-face");
+const { CognitiveServicesCredentials } = require("@azure/ms-rest-azure-js");
 const { isAuthenticated } = require("./middleware/authMiddleware");
+const generateAuthToken = require("../utils/generateAuthToken");
+const getNextSequenceValue = require("../utils/getNextSequenceValue");
+
 const router = express.Router();
 
 // Azure Face API setup
@@ -14,59 +17,90 @@ const router = express.Router();
 // const faceEndpoint = process.env.AZURE_FACE_API_ENDPOINT;
 // const faceCredentials = new CognitiveServicesCredentials(faceKey);
 // const faceClient = new FaceClient(faceCredentials, faceEndpoint);
-
-router.get("/auth/register", (req, res) => {
-  res.render("register");
-});
-
 router.post("/auth/register", async (req, res) => {
   try {
-    // const { email, password } = req.body;
-    const accountStatus = "PENDING"; // Default status when registering
-    // Hashing the password before creating the user
-    // const passwordHash = await bcrypt.hash(password, 10);
-    const user = await User.create({
-      // email,
-      // passwordHash,
+    const { email, password } = req.body;
+
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
+    }
+
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
+
+    const accountNumber = await getNextSequenceValue("User");
+    const accountStatus = "PENDING";
+
+    console.log("password", password);
+    const passwordHash = await bcrypt.hash(password, 10);
+    console.log("passwordHash", passwordHash);
+
+    const user = new User({
+      email,
+      passwordHash,
       accountStatus,
+      accountNumber,
     });
+
+    await user.save();
+
+    const token = generateAuthToken(user);
 
     console.log("User registered successfully");
 
-    // Redirect to the biometric data submission page or directly call the route
-    res.redirect(`/auth/biometrics?userId=${user._id}`);
+    return res
+      .status(200)
+      .json({ message: "User registered successfully", token, user });
   } catch (error) {
     console.error("Registration error:", error.message);
     console.error(error.stack);
-    res.status(500).send(error.message);
+    res.status(500).json({ message: error.message });
   }
-});
-
-router.get("/auth/login", (req, res) => {
-  res.render("login");
 });
 
 router.post("/auth/login", async (req, res) => {
   try {
     const { email, password } = req.body;
+
+    if (!email || !password) {
+      console.log("Email or password not provided");
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
+    }
+
+    console.log(`Received login request for email: ${email}`);
+
     const user = await User.findOne({ email });
+
     if (!user) {
       console.log("Login attempt failed: User not found");
-      return res.status(400).send("User not found");
+      return res.status(400).json({ message: "User not found" });
     }
+
+    console.log(`User found: ${user.email}`);
+
     const isMatch = await bcrypt.compare(password, user.passwordHash);
+
+    console.log("password", password);
+    console.log("passwordHash", user.passwordHash);
+
     if (isMatch) {
-      req.session.userId = user._id;
+      const token = generateAuthToken(user);
       console.log("User logged in successfully");
-      return res.redirect("/");
+      return res.status(200).json({ message: "Login successful", token, user });
     } else {
       console.log("Login attempt failed: Password is incorrect");
-      return res.status(400).send("Password is incorrect");
+      return res.status(400).json({ message: "Password is incorrect" });
     }
   } catch (error) {
     console.error("Login error:", error.message);
     console.error(error.stack);
-    return res.status(500).send(error.message);
+    return res.status(500).json({ message: error.message });
   }
 });
 
@@ -80,6 +114,42 @@ router.get("/auth/logout", (req, res) => {
     console.log("User logged out successfully");
     res.redirect("/auth/login");
   });
+});
+
+router.post("/auth/biometrics", isAuthenticated, async (req, res) => {
+  try {
+    const { userId, faceScanData } = req.body;
+
+    // Analyze face scan using Azure Face API
+    const faceScanBuffer = Buffer.from(faceScanData, "base64");
+    const detectedFaceId = await faceApiDetect(faceScanBuffer);
+
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const isIdentical = await faceApiVerify(user.faceId, detectedFaceId);
+    if (isIdentical) {
+      res.status(200).json({ message: "Face verified successfully" });
+    } else {
+      res.status(401).json({ message: "Face verification failed" });
+    }
+
+    const biometricData = new BiometricData({
+      userID: userId,
+      faceScanData: faceScanBuffer,
+    });
+
+    await biometricData.save();
+    console.log("Biometric data received and saved:", biometricData);
+
+    res.status(200).send("Biometric data submission is successful.");
+  } catch (error) {
+    console.error("Biometric data submission error:", error.message);
+    console.error(error.stack);
+    res.status(500).send(error.message);
+  }
 });
 
 // router.post("/auth/biometrics", isAuthenticated, async (req, res) => {

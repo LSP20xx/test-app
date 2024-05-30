@@ -1,21 +1,18 @@
 const mongoose = require("mongoose");
-const bcrypt = require("bcrypt");
 const { isEmail } = require("validator");
 const getNextSequenceValue = require("../utils/getNextSequenceValue");
 
 const userSchema = new mongoose.Schema({
-  username: { type: String, unique: true, required: false },
   firstName: { type: String, required: false },
   lastName: { type: String, required: false },
   email: {
     type: String,
-    required: false,
+    required: true,
     unique: true,
     validate: [isEmail, "Please enter a valid email"],
   },
-  passwordHash: { type: String, required: false },
-  accountNumber: { type: Number, required: false, unique: true },
-  dateOfBirth: { type: Date, required: false },
+  passwordHash: { type: String, required: true },
+  accountNumber: { type: Number, required: true, unique: true },
   gender: {
     type: String,
     required: false,
@@ -33,11 +30,6 @@ const userSchema = new mongoose.Schema({
 userSchema.pre("save", async function (next) {
   if (this.isNew) {
     this.accountNumber = await getNextSequenceValue("User");
-  }
-
-  if (this.isModified("passwordHash")) {
-    const hash = await bcrypt.hash(this.passwordHash, 10);
-    this.passwordHash = hash;
   }
 
   next();
