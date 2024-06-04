@@ -9,6 +9,7 @@ const { CognitiveServicesCredentials } = require("@azure/ms-rest-azure-js");
 const { isAuthenticated } = require("./middleware/authMiddleware");
 const generateAuthToken = require("../utils/generateAuthToken");
 const getNextSequenceValue = require("../utils/getNextSequenceValue");
+const isAdmin = require("./middleware/adminMiddleware");
 
 const router = express.Router();
 
@@ -27,23 +28,27 @@ router.post("/auth/register", async (req, res) => {
         .json({ message: "Email and password are required" });
     }
 
+    let isInstitucional = false;
     const existingUser = await User.findOne({ email });
     if (existingUser) {
+      if (existingUser.isInstitution && existingUser.passwordHash) {
+        return res
+          .status(400)
+          .json({ message: "Institutional email cannot be re-registered" });
+      } else {
+        isInstitucional = true;
+      }
       return res.status(400).json({ message: "User already exists" });
     }
 
     const accountNumber = await getNextSequenceValue("User");
-    const accountStatus = "PENDING";
-
-    console.log("password", password);
     const passwordHash = await bcrypt.hash(password, 10);
-    console.log("passwordHash", passwordHash);
-
     const user = new User({
       email,
       passwordHash,
-      accountStatus,
+      accountStatus: isInstitucional ? "ACTIVE" : "PENDING",
       accountNumber,
+      role: isInstitucional ? "INSTITUTION" : "USER",
     });
 
     await user.save();
@@ -52,15 +57,130 @@ router.post("/auth/register", async (req, res) => {
 
     console.log("User registered successfully");
 
+    const userData = {
+      userId: user._id,
+      email: user.email,
+      accountStatus: user.accountStatus,
+      role: user.role,
+      isPremiumUser: user.isPremiumUser,
+      isInstitution: user.isInstitution,
+      isVerified: user.isVerified,
+    };
+
     return res
       .status(200)
-      .json({ message: "User registered successfully", token, user });
+      .json({ message: "User registered successfully", token, userData });
   } catch (error) {
     console.error("Registration error:", error.message);
     console.error(error.stack);
     res.status(500).json({ message: error.message });
   }
 });
+
+router.post(
+  "/auth/register-institution",
+  isAdmin,
+  isAuthenticated,
+  async (req, res) => {
+    try {
+      const { email } = req.body;
+
+      if (!email) {
+        return res.status(400).json({ message: "Email is required" });
+      }
+
+      const existingUser = await User.findOne({ email });
+      if (existingUser) {
+        return res
+          .status(400)
+          .json({ message: "Institutional email cannot be re-registered" });
+      }
+
+      const accountNumber = await getNextSequenceValue("User");
+
+      const user = new User({
+        email,
+        accountStatus: "ACTIVE",
+        accountNumber,
+        isInstitution: true,
+        isVerified: true,
+        role: "INSTITUTION",
+      });
+
+      await user.save();
+
+      const token = generateAuthToken(user);
+
+      console.log("Institutional account created successfully");
+
+      const userData = {
+        userId: user._id,
+        email: user.email,
+        accountStatus: user.accountStatus,
+        role: user.role,
+        isPremiumUser: user.isPremiumUser,
+        isInstitution: user.isInstitution,
+        isVerified: user.isVerified,
+      };
+
+      return res.status(200).json({
+        message: "Institutional account created successfully",
+        token,
+        userData,
+      });
+    } catch (error) {
+      console.error("Registration error:", error.message);
+      console.error(error.stack);
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
+// router.post("/auth/register-admin", async (req, res) => {
+//   try {
+//     const { email, password } = req.body;
+
+//     if (!email || !password) {
+//       return res
+//         .status(400)
+//         .json({ message: "Email and password are required" });
+//     }
+
+//     const existingUser = await User.findOne({ email });
+//     if (existingUser) {
+//       return res.status(400).json({ message: "User already exists" });
+//     }
+
+//     const passwordHash = await bcrypt.hash(password, 10);
+
+//     const accountNumber = -Math.floor(Math.random() * 1e8) - 1;
+
+//     const user = new User({
+//       email,
+//       passwordHash,
+//       role: "ADMIN",
+//       accountStatus: "ACTIVE",
+//       accountNumber,
+//       isVerified: true,
+//     });
+
+//     await user.save();
+
+//     const token = generateAuthToken(user);
+
+//     console.log("Admin user created successfully");
+
+//     return res.status(200).json({
+//       message: "Admin user created successfully",
+//       token,
+//       user,
+//     });
+//   } catch (error) {
+//     console.error("Registration error:", error.message);
+//     console.error(error.stack);
+//     res.status(500).json({ message: error.message });
+//   }
+// });
 
 router.post("/auth/login", async (req, res) => {
   try {
@@ -92,7 +212,20 @@ router.post("/auth/login", async (req, res) => {
     if (isMatch) {
       const token = generateAuthToken(user);
       console.log("User logged in successfully");
-      return res.status(200).json({ message: "Login successful", token, user });
+
+      const userData = {
+        userId: user._id,
+        email: user.email,
+        accountStatus: user.accountStatus,
+        role: user.role,
+        isPremiumUser: user.isPremiumUser,
+        isInstitution: user.isInstitution,
+        isVerified: user.isVerified,
+      };
+
+      return res
+        .status(200)
+        .json({ message: "Login successful", token, userData });
     } else {
       console.log("Login attempt failed: Password is incorrect");
       return res.status(400).json({ message: "Password is incorrect" });

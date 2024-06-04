@@ -11,7 +11,7 @@ const userSchema = new mongoose.Schema({
     unique: true,
     validate: [isEmail, "Please enter a valid email"],
   },
-  passwordHash: { type: String, required: true },
+  passwordHash: { type: String, required: false },
   accountNumber: { type: Number, required: true, unique: true },
   gender: {
     type: String,
@@ -20,10 +20,17 @@ const userSchema = new mongoose.Schema({
   },
   isVerified: { type: Boolean, default: false },
   isPremiumUser: { type: Boolean, default: false },
+  isInstitution: { type: Boolean, default: false },
   accountStatus: {
     type: String,
     required: true,
     enum: ["ACTIVE", "PENDING", "DELETED", "CANCELLED"],
+  },
+  role: {
+    type: String,
+    required: true,
+    enum: ["USER", "ADMIN", "INSTITUTION"],
+    default: "user",
   },
 });
 

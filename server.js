@@ -1,13 +1,16 @@
-require("dotenv").config();
+const path = require("path");
+require("dotenv").config({ path: path.resolve(__dirname, "./.env") });
 const mongoose = require("mongoose");
 const express = require("express");
 const session = require("express-session");
 const MongoStore = require("connect-mongo");
+const fs = require("fs");
+
 const authRoutes = require("./routes/authRoutes");
 const userRoutes = require("./routes/userRoutes");
+const scanRoutes = require("./routes/scanRoutes");
 const testRoutes = require("./routes/testRoutes");
 const resourceRoutes = require("./routes/resourceRoutes");
-const path = require("path");
 
 if (!process.env.DATABASE_URL || !process.env.SESSION_SECRET) {
   console.error(
@@ -30,6 +33,26 @@ app.set("view engine", "ejs");
 app.use(express.static("public"));
 
 const dbUrl = process.env.DATABASE_URL.replace("[::1]", "localhost");
+
+// Ruta correcta a las credenciales
+const credentialsPath = path.resolve(
+  __dirname,
+  "./credentials/google-document-ai.json"
+);
+
+fs.access(credentialsPath, fs.constants.R_OK, (err) => {
+  if (err) {
+    console.error(
+      `Error: Cannot access credentials file at ${credentialsPath}`
+    );
+    process.exit(1);
+  } else {
+    console.log(
+      `Success: Credentials file is accessible at ${credentialsPath}`
+    );
+    process.env.GOOGLE_APPLICATION_CREDENTIALS = credentialsPath;
+  }
+});
 
 // Conectar a MongoDB usando Mongoose
 mongoose
@@ -87,6 +110,9 @@ app.use(testRoutes);
 
 // Resource Routes
 app.use(resourceRoutes);
+
+// Scan Routes
+app.use(scanRoutes);
 
 // Root path response
 app.get("/", (req, res) => {
