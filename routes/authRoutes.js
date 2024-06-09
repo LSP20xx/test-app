@@ -136,51 +136,51 @@ router.post(
   }
 );
 
-// router.post("/auth/register-admin", async (req, res) => {
-//   try {
-//     const { email, password } = req.body;
+router.post("/auth/register-admin", async (req, res) => {
+  try {
+    const { email, password } = req.body;
 
-//     if (!email || !password) {
-//       return res
-//         .status(400)
-//         .json({ message: "Email and password are required" });
-//     }
+    if (!email || !password) {
+      return res
+        .status(400)
+        .json({ message: "Email and password are required" });
+    }
 
-//     const existingUser = await User.findOne({ email });
-//     if (existingUser) {
-//       return res.status(400).json({ message: "User already exists" });
-//     }
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ message: "User already exists" });
+    }
 
-//     const passwordHash = await bcrypt.hash(password, 10);
+    const passwordHash = await bcrypt.hash(password, 10);
 
-//     const accountNumber = -Math.floor(Math.random() * 1e8) - 1;
+    const accountNumber = -Math.floor(Math.random() * 1e8) - 1;
 
-//     const user = new User({
-//       email,
-//       passwordHash,
-//       role: "ADMIN",
-//       accountStatus: "ACTIVE",
-//       accountNumber,
-//       isVerified: true,
-//     });
+    const user = new User({
+      email,
+      passwordHash,
+      role: "ADMIN",
+      accountStatus: "ACTIVE",
+      accountNumber,
+      isVerified: true,
+    });
 
-//     await user.save();
+    await user.save();
 
-//     const token = generateAuthToken(user);
+    const token = generateAuthToken(user);
 
-//     console.log("Admin user created successfully");
+    console.log("Admin user created successfully");
 
-//     return res.status(200).json({
-//       message: "Admin user created successfully",
-//       token,
-//       user,
-//     });
-//   } catch (error) {
-//     console.error("Registration error:", error.message);
-//     console.error(error.stack);
-//     res.status(500).json({ message: error.message });
-//   }
-// });
+    return res.status(200).json({
+      message: "Admin user created successfully",
+      token,
+      user,
+    });
+  } catch (error) {
+    console.error("Registration error:", error.message);
+    console.error(error.stack);
+    res.status(500).json({ message: error.message });
+  }
+});
 
 router.post("/auth/login", async (req, res) => {
   try {
