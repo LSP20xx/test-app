@@ -4,7 +4,7 @@ const isAdmin = async (req, res, next) => {
   try {
     const userId = req.userId;
     const user = await User.findById(userId);
-    console.log("req.userId", req.userId)
+    console.log("req.userId", req.userId);
 
     if (user && user.role === "ADMIN") {
       next();

@@ -9,29 +9,11 @@ const identificationSchema = new Schema({
   governmentIDFrontCompleteExtractedText: { type: String, required: false },
   governmentIDBackCompleteExtractedText: { type: String, required: false },
   selfiePhoto: { type: String, required: false },
-  name: { type: String, required: true },
-  idNumber: { type: String, required: true },
-  nationality: { type: String, required: true },
-});
-
-identificationSchema.pre("save", function (next) {
-  const encryptionKey = process.env.ENCRYPTION_KEY;
-  this.name = crypto.AES.encrypt(this.name, encryptionKey).toString();
-  this.idNumber = crypto.AES.encrypt(this.idNumber, encryptionKey).toString();
-  this.nationality = crypto.AES.encrypt(
-    this.nationality,
-    encryptionKey
-  ).toString();
-  this.governmentIDFrontCompleteExtractedText = crypto.AES.encrypt(
-    this.governmentIDFrontCompleteExtractedText,
-    encryptionKey
-  ).toString();
-  this.governmentIDBackCompleteExtractedText = crypto.AES.encrypt(
-    this.governmentIDBackCompleteExtractedText,
-    encryptionKey
-  ).toString();
-
-  next();
+  name: { type: String, required: false },
+  surname: { type: String, required: false },
+  idNumber: { type: String, required: false },
+  nationality: { type: String, required: false },
+  dateOfBirth: { type: Date, required: false }
 });
 
 const Identification = mongoose.model("Identification", identificationSchema);

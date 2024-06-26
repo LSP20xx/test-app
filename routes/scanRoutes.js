@@ -1,14 +1,12 @@
 require("dotenv").config(); // Load environment variables from .env file
 const express = require("express");
-const { DocumentProcessorServiceClient } =
-  require("@google-cloud/documentai").v1;
+const { DocumentProcessorServiceClient } = require("@google-cloud/documentai").v1;
 const Identification = require("../models/Identification");
-const router = express.Router();
 const multer = require("multer");
-const path = require("path");
 const fs = require("fs");
 
-// Set up multer to save uploaded files to a specific directory
+const router = express.Router();
+
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     cb(null, "uploads/");
@@ -23,30 +21,47 @@ const client = new DocumentProcessorServiceClient({
   apiEndpoint: "eu-documentai.googleapis.com",
 });
 
-const extractDataFromText = (text) => {
-  const namePattern = /Nombre\s*\/\s*Name\s*(.*)/i;
-  const surnamePattern = /Apellido\s*\/\s*Surname\s*(.*)/i;
-  const idNumberPattern = /Document\s*:\s*([^\s:]+)/i;
-  const nationalityPattern = /Nacionalidad\s*\/\s*Nationality\s*(.*)/i;
-
-  const nameMatch = text.match(namePattern);
-  const surnameMatch = text.match(surnamePattern);
-  const idNumberMatch = text.match(idNumberPattern);
-  const nationalityMatch = text.match(nationalityPattern);
-
-  const name = nameMatch ? nameMatch[1].trim() : null;
-  const surname = surnameMatch ? surnameMatch[1].trim() : null;
-  const idNumber = idNumberMatch ? idNumberMatch[1].trim() : null;
-  const nationality = nationalityMatch
-    ? nationalityMatch[1].trim().split("\n")[0]
-    : null;
-
-  return { name, surname, idNumber, nationality };
+const extractDataFromEntities = (entities) => {
+  const data = {};
+  entities.forEach(entity => {
+    switch (entity.type) {
+      case 'name':
+        data.name = toPascalCaseWithSpace(entity.mentionText);
+        break;
+      case 'surname':
+        data.surname = toPascalCaseWithSpace(entity.mentionText);
+        break;
+      case 'document':
+        data.idNumber = entity.mentionText;
+        break;
+      case 'nationality':
+        data.nationality = toPascalCaseWithSpace(entity.mentionText);
+        break;
+      case 'dateOfBirth':
+        const { year, month, day } = entity.normalizedValue.dateValue;
+        data.dateOfBirth = new Date(year, month - 1, day);
+        break;
+      default:
+        break;
+    }
+  });
+  return data;
 };
 
 const validateData = (data) => {
   return data.name && data.idNumber && data.nationality;
 };
+
+function toPascalCaseWithSpace(str) {
+  if (!str) {
+    return '';
+  }
+  return str
+    .toLowerCase()               
+    .split(/[\s_]+/)             
+    .map(word => word.charAt(0).toUpperCase() + word.slice(1)) 
+    .join(' ');                  
+}
 
 router.post("/scan-id", upload.single("imageUrl"), async (req, res) => {
   const { userId, cameraType } = req.body;
@@ -84,7 +99,6 @@ router.post("/scan-id", upload.single("imageUrl"), async (req, res) => {
     }
 
     const name = `projects/${projectId}/locations/${location}/processors/${processorId}`;
-
     const imageBuffer = fs.readFileSync(imageUrl.path);
     const encodedImage = imageBuffer.toString("base64");
 
@@ -105,6 +119,7 @@ router.post("/scan-id", upload.single("imageUrl"), async (req, res) => {
     try {
       const [result] = await client.processDocument(request);
       console.log("result", result);
+      console.log("result.document.entities", result.document?.entities);
 
       if (result.document.error) {
         return res.status(500).json({
@@ -117,61 +132,50 @@ router.post("/scan-id", upload.single("imageUrl"), async (req, res) => {
       if (result.document.fraudSignals) {
         fraudSignals = result.document.fraudSignals;
         console.log("Fraud signals detected:", fraudSignals);
-        return res
-          .status(400)
-          .json({ message: "Fraud signals detected", fraudSignals });
+        return res.status(400).json({ message: "Fraud signals detected", fraudSignals });
       } else {
         console.log("No fraud signals detected.");
       }
 
-      const document = result.document.text;
-
-      console.log("Extracted text:", document);
-
-      const extractedData = extractDataFromText(document);
+      const entities = result.document.entities;
+      const extractedData = extractDataFromEntities(entities);
 
       console.log("extractedData", extractedData);
 
       // Find existing identification record for the user
-      let existingIdentification = await Identification.findOne({
-        userID: userId,
-      });
+      let existingIdentification = await Identification.findOne({ userID: userId });
 
       if (existingIdentification) {
         // Update only if fields are not already present
         if (cameraType === "FRONT") {
           existingIdentification.governmentIDFrontPhoto = imageUrl.path;
-          existingIdentification.governmentIDFrontCompleteExtractedText =
-            document;
+          existingIdentification.governmentIDFrontCompleteExtractedText = result.document.text;
+          existingIdentification.name = toPascalCaseWithSpace(existingIdentification.name) || extractedData.name;
+          existingIdentification.surname = toPascalCaseWithSpace(existingIdentification.surname) || extractedData.surname;
+          existingIdentification.idNumber = existingIdentification.idNumber || extractedData.idNumber;
+          existingIdentification.nationality = toPascalCaseWithSpace(existingIdentification.nationality) || extractedData.nationality;
+          existingIdentification.dateOfBirth = existingIdentification.dateOfBirth || extractedData.dateOfBirth;
+
+          if (!validateData(extractedData)) {
+            return res.status(400).json({ message: "Extracted data is not valid" });
+          }
         } else if (cameraType === "BACK") {
           existingIdentification.governmentIDBackPhoto = imageUrl.path;
-          existingIdentification.governmentIDBackCompleteExtractedText =
-            document;
+          existingIdentification.governmentIDBackCompleteExtractedText = result.document.text;
         }
-
-        existingIdentification.name =
-          existingIdentification.name || extractedData.name;
-        existingIdentification.surname =
-          existingIdentification.surname || extractedData.surname;
-        existingIdentification.idNumber =
-          existingIdentification.idNumber || extractedData.idNumber;
-        existingIdentification.nationality =
-          existingIdentification.nationality || extractedData.nationality;
       } else {
         existingIdentification = new Identification({
           userID: userId,
           ...extractedData,
           governmentIDFrontPhoto: cameraType === "FRONT" ? imageUrl.path : "",
           governmentIDBackPhoto: cameraType === "BACK" ? imageUrl.path : "",
-          governmentIDFrontCompleteExtractedText:
-            cameraType === "FRONT" ? document : "",
-          governmentIDBackCompleteExtractedText:
-            cameraType === "BACK" ? document : "",
+          governmentIDFrontCompleteExtractedText: cameraType === "FRONT" ? result.document.text : "",
+          governmentIDBackCompleteExtractedText: cameraType === "BACK" ? result.document.text : "",
         });
-      }
 
-      if (!validateData(extractedData)) {
-        return res.status(400).json({ message: "Extracted data is not valid" });
+        if (cameraType === "FRONT" && !validateData(extractedData)) {
+          return res.status(400).json({ message: "Extracted data is not valid" });
+        }
       }
 
       await existingIdentification.save();

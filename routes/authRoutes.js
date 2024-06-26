@@ -18,27 +18,43 @@ const router = express.Router();
 // const faceEndpoint = process.env.AZURE_FACE_API_ENDPOINT;
 // const faceCredentials = new CognitiveServicesCredentials(faceKey);
 // const faceClient = new FaceClient(faceCredentials, faceEndpoint);
+
 router.post("/auth/register", async (req, res) => {
   try {
     const { email, password } = req.body;
 
     if (!email || !password) {
-      return res
-        .status(400)
-        .json({ message: "Email and password are required" });
+      return res.status(400).json({ message: "Email and password are required" });
     }
 
-    let isInstitucional = false;
     const existingUser = await User.findOne({ email });
+
     if (existingUser) {
-      if (existingUser.isInstitution && existingUser.passwordHash) {
-        return res
-          .status(400)
-          .json({ message: "Institutional email cannot be re-registered" });
+      if (existingUser.isInstitution) {
+        if (existingUser.passwordHash) {
+          return res.status(400).json({ message: "Institutional email cannot be re-registered" });
+        } else {
+          // Permitir que la institución establezca la contraseña
+          existingUser.passwordHash = await bcrypt.hash(password, 10);
+          await existingUser.save();
+
+          const token = generateAuthToken(existingUser);
+
+          const userData = {
+            userId: existingUser._id,
+            email: existingUser.email,
+            accountStatus: existingUser.accountStatus,
+            role: existingUser.role,
+            isPremiumUser: existingUser.isPremiumUser,
+            isInstitution: existingUser.isInstitution,
+            isVerified: existingUser.isVerified,
+          };
+
+          return res.status(200).json({ message: "Password set successfully", token, userData });
+        }
       } else {
-        isInstitucional = true;
+        return res.status(400).json({ message: "User already exists" });
       }
-      return res.status(400).json({ message: "User already exists" });
     }
 
     const accountNumber = await getNextSequenceValue("User");
@@ -46,9 +62,10 @@ router.post("/auth/register", async (req, res) => {
     const user = new User({
       email,
       passwordHash,
-      accountStatus: isInstitucional ? "ACTIVE" : "PENDING",
+      accountStatus: "PENDING",
       accountNumber,
-      role: isInstitucional ? "INSTITUTION" : "USER",
+      role: "USER",
+      isInstitution: email.endsWith('@institution.com'), // Suponiendo que el dominio de email indica una institución
     });
 
     await user.save();
@@ -67,26 +84,27 @@ router.post("/auth/register", async (req, res) => {
       isVerified: user.isVerified,
     };
 
-    return res
-      .status(200)
-      .json({ message: "User registered successfully", token, userData });
+    return res.status(200).json({ message: "User registered successfully", token, userData });
   } catch (error) {
     console.error("Registration error:", error.message);
     console.error(error.stack);
     res.status(500).json({ message: error.message });
   }
 });
-
 router.post(
   "/auth/register-institution",
-  isAdmin,
   isAuthenticated,
+  isAdmin,
   async (req, res) => {
     try {
-      const { email } = req.body;
+      const { email, institutionName } = req.body;
 
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
+      }
+
+      if (!institutionName) {
+        return res.status(400).json({ message: "Institution name is required" });
       }
 
       const existingUser = await User.findOne({ email });
@@ -104,7 +122,8 @@ router.post(
         accountNumber,
         isInstitution: true,
         isVerified: true,
-        role: "INSTITUTION",
+        role: "INSTITUTION_ADMIN",
+        institutionName: institutionName
       });
 
       await user.save();
@@ -121,6 +140,7 @@ router.post(
         isPremiumUser: user.isPremiumUser,
         isInstitution: user.isInstitution,
         isVerified: user.isVerified,
+        institutionName: user.institutionName,
       };
 
       return res.status(200).json({

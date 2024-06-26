@@ -7,8 +7,7 @@ const userSchema = new mongoose.Schema({
   lastName: { type: String, required: false },
   email: {
     type: String,
-    required: true,
-    unique: true,
+    required: false,
     validate: [isEmail, "Please enter a valid email"],
   },
   passwordHash: { type: String, required: false },
@@ -29,9 +28,12 @@ const userSchema = new mongoose.Schema({
   role: {
     type: String,
     required: true,
-    enum: ["USER", "ADMIN", "INSTITUTION"],
-    default: "user",
+    enum: ["USER", "ADMIN", "INSTITUTION", "INSTITUTION_ADMIN"],
+    default: "USER",
   },
+  institutionName: { type: String, required: false },
+  institutionUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  termsAndConditionsAccepted: { type: Boolean, default: false }
 });
 
 userSchema.pre("save", async function (next) {
