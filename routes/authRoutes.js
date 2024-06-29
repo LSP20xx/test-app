@@ -34,7 +34,6 @@ router.post("/auth/register", async (req, res) => {
         if (existingUser.passwordHash) {
           return res.status(400).json({ message: "Institutional email cannot be re-registered" });
         } else {
-          // Permitir que la institución establezca la contraseña
           existingUser.passwordHash = await bcrypt.hash(password, 10);
           await existingUser.save();
 
@@ -91,6 +90,7 @@ router.post("/auth/register", async (req, res) => {
     res.status(500).json({ message: error.message });
   }
 });
+
 router.post(
   "/auth/register-institution",
   isAuthenticated,
@@ -122,7 +122,7 @@ router.post(
         accountNumber,
         isInstitution: true,
         isVerified: true,
-        role: "INSTITUTION_ADMIN",
+        role: "INSTITUTION",
         institutionName: institutionName
       });
 
@@ -213,6 +213,7 @@ router.post("/auth/login", async (req, res) => {
         .json({ message: "Email and password are required" });
     }
 
+
     console.log(`Received login request for email: ${email}`);
 
     const user = await User.findOne({ email });
@@ -226,8 +227,6 @@ router.post("/auth/login", async (req, res) => {
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
 
-    console.log("password", password);
-    console.log("passwordHash", user.passwordHash);
 
     if (isMatch) {
       const token = generateAuthToken(user);

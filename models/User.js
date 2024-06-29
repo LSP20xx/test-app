@@ -28,12 +28,14 @@ const userSchema = new mongoose.Schema({
   role: {
     type: String,
     required: true,
-    enum: ["USER", "ADMIN", "INSTITUTION", "INSTITUTION_ADMIN"],
+    enum: ["USER", "ADMIN", "INSTITUTION"],
     default: "USER",
   },
   institutionName: { type: String, required: false },
   institutionUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   termsAndConditionsAccepted: { type: Boolean, default: false }
+}, {
+  timestamps: true // Habilita createdAt y updatedAt
 });
 
 userSchema.pre("save", async function (next) {

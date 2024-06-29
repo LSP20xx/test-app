@@ -3,10 +3,11 @@ const { Schema } = mongoose;
 
 const testSchema = new Schema({
   userID: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  testPhoto: { type: String, required: true }, // Path to the stored image
+  testPhoto1: { type: String, required: true },
+  testPhoto2: { type: String, required: false },
   testResult: { 
     type: String, 
-    required: true, 
+    required: false, 
     enum: ['SCD', 'trait', 'negative'] 
   },
   resultSent: { type: Boolean, default: false }
