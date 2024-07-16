@@ -19,20 +19,17 @@ const userSchema = new mongoose.Schema({
   },
   isVerified: { type: Boolean, default: false },
   isPremiumUser: { type: Boolean, default: false },
-  isInstitution: { type: Boolean, default: false },
   accountStatus: {
     type: String,
-    required: true,
+    required: false,
     enum: ["ACTIVE", "PENDING", "DELETED", "CANCELLED"],
   },
   role: {
     type: String,
     required: true,
-    enum: ["USER", "ADMIN", "INSTITUTION"],
+    enum: ["USER", "INSTITUTION", "ADMIN"],
     default: "USER",
   },
-  institutionName: { type: String, required: false },
-  institutionUsers: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   termsAndConditionsAccepted: { type: Boolean, default: false }
 }, {
   timestamps: true // Habilita createdAt y updatedAt

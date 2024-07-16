@@ -8,6 +8,7 @@ const User = require("../models/User");
 const getNextSequenceValue = require("../utils/getNextSequenceValue");
 const { sendEmail } = require("../services/emailService");
 const Test = require("../models/Test");
+const Institution = require("../models/Institution");
 const router = express.Router();
 
 // Route to render the form for uploading parental consent
@@ -50,10 +51,11 @@ router.post(
 );
 
 router.post('/update-terms', isAuthenticated, async (req, res) => {
-  const { institutionId, userId } = req.body;
+  const {  institutionId, userOfInstitutionId } = req.body;
+  console.log(institutionId, userOfInstitutionId)
 
   try {
-    const user = await User.findById(userId);
+    const user = await User.findById(userOfInstitutionId);
 
     if (!user) {
       return res.status(404).send('User not found');
@@ -70,9 +72,7 @@ router.post('/update-terms', isAuthenticated, async (req, res) => {
     console.error('Error updating user:', error);
     res.status(500).send('Error updating user');
   }
-});
-
-router.post('/create-user-of-institution', async (req, res) => {
+});router.post('/create-user-of-institution', async (req, res) => {
   const { institutionId } = req.body;
 
   try {
@@ -82,7 +82,7 @@ router.post('/create-user-of-institution', async (req, res) => {
     await newUser.save();
 
     // Asociar el nuevo usuario con la institución
-    const institution = await User.findByIdAndUpdate(institutionId, {
+    const institution = await Institution.findByIdAndUpdate(institutionId, {
       $push: { institutionUsers: newUser._id }
     });
 
@@ -91,72 +91,54 @@ router.post('/create-user-of-institution', async (req, res) => {
       return res.status(404).json({ message: 'Institution not found' });
     }
 
-    res.json({ userId: newUser._id });
+    res.json({ userOfInstitutionId: newUser._id });
   } catch (error) {
     console.error('Error creating institutional user:', error);
     res.status(500).send('Error creating institutional user');
   }
-});
-
-router.get("/institution-users/:userId", isAuthenticated, async (req, res) => {
-  const { userId } = req.params;
+});router.get("/institution-users", isAuthenticated, async (req, res) => {
+  const { institutionId } = req.query; // Usar query en lugar de body para GET
+  console.log("institutionId", institutionId);
 
   try {
-    // Encuentra al usuario por ID y verifica si es una institución
-    const user = await User.findById(userId).populate("institutionUsers");
+    const institution = await Institution.findById(institutionId).populate("institutionUsers");
+    console.log("institution", institution);
 
-    console.log("userid", user._id);
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
+    if (!institution) {
+      return res.status(404).json({ message: "Institution not found" });
     }
 
-    if (!user.isInstitution) {
-      return res.status(403).json({ message: "User is not an institution" });
-    }
+    // Retrieve the associated user data
+    const users = institution.institutionUsers; // Access the user data from the populated field
 
-    // Obtiene los usuarios asociados a la institución
-    const institutionUsers = await User.find({
-      _id: { $in: user.institutionUsers },
-    }).lean();
-    console.log("institutionUsers", institutionUsers);
-
-    // Busca los detalles de identificación para cada usuario institucional
-    const userIds = institutionUsers.map((u) => u._id);
+    // Assuming `users` is an array, map the IDs and fetch identifications and tests for all users
+    const userIds = users.map(user => user._id);
     const identifications = await Identification.find({
       userID: { $in: userIds },
     }).lean();
 
-    // Busca los tests para cada usuario institucional
     const tests = await Test.find({
       userID: { $in: userIds },
     }).lean();
 
-    // Combina los datos del usuario con los detalles de identificación y los tests
-    const institutionUsersWithDetails = institutionUsers.map((institutionUser) => {
-      const identification = identifications.find(
-        (id) => id.userID.toString() === institutionUser._id.toString()
-      );
-
-      const userTests = tests.filter(
-        (test) => test.userID.toString() === institutionUser._id.toString()
-      );
-
-      // Elimina la propiedad userID del objeto identification para evitar duplicación
-      const { userID, ...identificationDetails } = identification || {};
-
+    // Combine user data with identifications and tests
+    const institutionUsersWithDetails = users.map(user => {
+      const userIdentifications = identifications.filter(ident => ident.userID.equals(user._id));
+      const userTests = tests.filter(test => test.userID.equals(user._id));
       return {
-        ...institutionUser,
-        ...identificationDetails,
-        tests: userTests, // Agrega los tests del usuario
+        ...user.toObject(), // Convert user document to plain object
+        identifications: userIdentifications,
+        tests: userTests,
       };
     });
 
     res.json({ institutionUsers: institutionUsersWithDetails });
   } catch (error) {
-    console.error("Error retrieving institution users:", error);
-    res.status(500).send("Error retrieving institution users");
+    console.error("Error retrieving institution user:", error);
+    res.status(500).send("Error retrieving institution user");
   }
 });
+
 
 
 router.get("/get-identification/:userId", async (req, res) => {
@@ -202,8 +184,8 @@ router.post('/update-identification', isAuthenticated, async (req, res) => {
     res.status(500).json({ message: 'Error updating identification' });
   }
 });
-router.delete("/institution-users/:institutionId/:userId", isAuthenticated, async (req, res) => {
-  const { institutionId, userId } = req.params;
+router.delete("/institution-users/:institutionId/:userOfInstitutionId", isAuthenticated, async (req, res) => {
+  const { institutionId, userOfInstitutionId } = req.params;
 
   try {
     // Verificar si la institución existe
@@ -221,7 +203,7 @@ router.delete("/institution-users/:institutionId/:userId", isAuthenticated, asyn
     // Eliminar el usuario de la lista de institutionUsers de la institución
     const updatedInstitution = await User.findByIdAndUpdate(
       institutionId,
-      { $pull: { institutionUsers: userId } },
+      { $pull: { institutionUsers: userOfInstitutionId } },
       { new: true }
     );
 
@@ -230,7 +212,7 @@ router.delete("/institution-users/:institutionId/:userId", isAuthenticated, asyn
     }
 
     // También eliminar el usuario si es necesario
-    await User.findByIdAndDelete(userId);
+    await User.findByIdAndDelete(userOfInstitutionId);
 
     res.status(200).json({ message: "User removed from institution successfully", institution: updatedInstitution });
   } catch (error) {
@@ -240,26 +222,44 @@ router.delete("/institution-users/:institutionId/:userId", isAuthenticated, asyn
 });
 
 router.post('/update-email', isAuthenticated, async (req, res) => {
-  const { userId, email } = req.body;
+  const { institutionId, userOfInstitutionId, email } = req.body;
 
   try {
-    const user = await User.findById(userId);
-
+    const institution = await Institution.findById(institutionId).populate("institutionUsers");
+    console.log("institution", institution);
+  
+    if (!institution) {
+      return res.status(404).json({ message: "Institution not found" });
+    }
+  
+    // Retrieve the associated user data
+    const users = institution.institutionUsers; // Access the user data from the populated field
+  
+    // Find the user by userOfInstitutionId
+    const user = users.find(user => user._id.toString() === userOfInstitutionId);
+  
     if (!user) {
-      return res.status(404).send('User not found');
+      return res.status(404).json({ message: "User not found" });
     }
 
+    // Actualizar el email
     user.email = email;
+
+    // Guardar el usuario actualizado
     await user.save();
-    console.log("llega a enviar el email")
-    // Send email notification
+
+    console.log("Email actualizado y enviado");
+
+    // Enviar notificación por email
     await sendEmail(email, '[ELOHEH] User Registration', 'You have successfully registered on ELOHEH app.');
+    
     res.json({ email: user.email });
   } catch (error) {
     console.error('Error updating email:', error);
     res.status(500).send('Error updating email');
   }
 });
+
 
 // Route to render the user profile page
 router.get("/profile", isAuthenticated, async (req, res) => {

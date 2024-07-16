@@ -10,6 +10,7 @@ const { isAuthenticated } = require("./middleware/authMiddleware");
 const generateAuthToken = require("../utils/generateAuthToken");
 const getNextSequenceValue = require("../utils/getNextSequenceValue");
 const isAdmin = require("./middleware/adminMiddleware");
+const Institution = require("../models/Institution");
 
 const router = express.Router();
 
@@ -30,7 +31,7 @@ router.post("/auth/register", async (req, res) => {
     const existingUser = await User.findOne({ email });
 
     if (existingUser) {
-      if (existingUser.isInstitution) {
+      if (existingUser.role === "INSTITUTION") {
         if (existingUser.passwordHash) {
           return res.status(400).json({ message: "Institutional email cannot be re-registered" });
         } else {
@@ -42,11 +43,8 @@ router.post("/auth/register", async (req, res) => {
           const userData = {
             userId: existingUser._id,
             email: existingUser.email,
-            accountStatus: existingUser.accountStatus,
             role: existingUser.role,
-            isPremiumUser: existingUser.isPremiumUser,
-            isInstitution: existingUser.isInstitution,
-            isVerified: existingUser.isVerified,
+          
           };
 
           return res.status(200).json({ message: "Password set successfully", token, userData });
@@ -64,7 +62,6 @@ router.post("/auth/register", async (req, res) => {
       accountStatus: "PENDING",
       accountNumber,
       role: "USER",
-      isInstitution: email.endsWith('@institution.com'), // Suponiendo que el dominio de email indica una institución
     });
 
     await user.save();
@@ -78,9 +75,7 @@ router.post("/auth/register", async (req, res) => {
       email: user.email,
       accountStatus: user.accountStatus,
       role: user.role,
-      isPremiumUser: user.isPremiumUser,
-      isInstitution: user.isInstitution,
-      isVerified: user.isVerified,
+      accountNumber,
     };
 
     return res.status(200).json({ message: "User registered successfully", token, userData });
@@ -97,13 +92,13 @@ router.post(
   isAdmin,
   async (req, res) => {
     try {
-      const { email, institutionName } = req.body;
+      const { email, name } = req.body;
 
       if (!email) {
         return res.status(400).json({ message: "Email is required" });
       }
 
-      if (!institutionName) {
+      if (!name) {
         return res.status(400).json({ message: "Institution name is required" });
       }
 
@@ -118,35 +113,37 @@ router.post(
 
       const user = new User({
         email,
-        accountStatus: "ACTIVE",
         accountNumber,
-        isInstitution: true,
-        isVerified: true,
-        role: "INSTITUTION",
-        institutionName: institutionName
+        role: "INSTITUTION"
       });
 
       await user.save();
+
+      const userId = user._id;
+
+      const institution = new Institution({
+        name,
+        _id: userId,
+        accountNumber
+      });
+
+      await institution.save();
+
 
       const token = generateAuthToken(user);
 
       console.log("Institutional account created successfully");
 
-      const userData = {
-        userId: user._id,
+      const institutionData = {
+        institutionId: userId,
         email: user.email,
-        accountStatus: user.accountStatus,
-        role: user.role,
-        isPremiumUser: user.isPremiumUser,
-        isInstitution: user.isInstitution,
-        isVerified: user.isVerified,
-        institutionName: user.institutionName,
+        name: user.name,
       };
 
       return res.status(200).json({
         message: "Institutional account created successfully",
         token,
-        userData,
+        institutionData,
       });
     } catch (error) {
       console.error("Registration error:", error.message);
@@ -179,9 +176,7 @@ router.post("/auth/register-admin", async (req, res) => {
       email,
       passwordHash,
       role: "ADMIN",
-      accountStatus: "ACTIVE",
       accountNumber,
-      isVerified: true,
     });
 
     await user.save();
@@ -223,7 +218,7 @@ router.post("/auth/login", async (req, res) => {
       return res.status(400).json({ message: "User not found" });
     }
 
-    console.log(`User found: ${user.email}`);
+
 
     const isMatch = await bcrypt.compare(password, user.passwordHash);
 
@@ -237,9 +232,6 @@ router.post("/auth/login", async (req, res) => {
         email: user.email,
         accountStatus: user.accountStatus,
         role: user.role,
-        isPremiumUser: user.isPremiumUser,
-        isInstitution: user.isInstitution,
-        isVerified: user.isVerified,
       };
 
       return res
