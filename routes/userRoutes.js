@@ -125,6 +125,7 @@ router.post('/update-terms', isAuthenticated, async (req, res) => {
     const institutionUsersWithDetails = users.map(user => {
       const userIdentifications = identifications.filter(ident => ident.userID.equals(user._id));
       const userTests = tests.filter(test => test.userID.equals(user._id));
+      console.log("tests", userTests)
       return {
         ...user.toObject(), // Convert user document to plain object
         identifications: userIdentifications,

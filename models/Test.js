@@ -8,10 +8,16 @@ const testSchema = new Schema({
   testResult: { 
     type: String, 
     required: false, 
-    enum: ['SCD', 'trait', 'negative'] 
+    enum: ['No Blood Samples', 'HbAA', 'HbAS', 'HbSS', 'HbAC', 'HbSC'] 
   },
-  resultSent: { type: Boolean, default: false }
-});
+  resultSent: { type: Boolean, default: false },
+  predictions: [
+    {
+      displayName: { type: String, required: true },
+      confidence: { type: Number, required: true },
+    }
+  ]
+}, { timestamps: true });
 
 const Test = mongoose.model('Test', testSchema);
 
